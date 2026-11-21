@@ -26,99 +26,120 @@ const COMPLEXITIES: Complexity[] = [
     label: 'O(1)',
     color: '#22c55e',
     fn: () => 1,
-    description: 'Constant time — same work regardless of input size.',
-    code: `function constantTime(arr, n) {
-  // N doesn't change the work here
-  return arr[0];
-}
+    description: 'Constant time — same work no matter how big N is.',
+    code: `// O(1) - Constant time
+// No matter how big N gets, this does the same amount of work.
 
-console.log(constantTime([1,2,3], N));`,
+const numbers = [10, 20, 30, 40, 50];
+const firstNumber = numbers[0]; // 1 simple step
+
+console.log("N =", N);
+console.log("First number:", firstNumber);
+console.log("Work done: 1 step");`,
   },
   {
     id: 'ologn',
     label: 'O(log n)',
     color: '#06b6d4',
     fn: (n) => Math.log2(Math.max(n, 1)),
-    description: 'Logarithmic — grows slowly by halving the problem.',
-    code: `function binarySearchSteps(n) {
-  let steps = 0;
-  let size = n;
-  while (size > 1) {
-    size = Math.floor(size / 2);
-    steps++;
-  }
-  return steps;
+    description: 'Logarithmic — cuts the problem in half each step.',
+    code: `// O(log n) - Logarithmic time
+// Each step cuts the remaining work in half.
+
+let remaining = N;
+let steps = 0;
+
+while (remaining > 1) {
+  remaining = Math.floor(remaining / 2); // cut in half
+  steps++;
 }
 
-console.log("steps for N:", binarySearchSteps(N));`,
+console.log("N =", N);
+console.log("Steps needed:", steps);`,
   },
   {
     id: 'on',
     label: 'O(n)',
     color: '#3b82f6',
     fn: (n) => n,
-    description: 'Linear — work grows directly with input size.',
-    code: `function linearSum(n) {
-  let sum = 0;
-  for (let i = 0; i < n; i++) {
-    sum += i;
-  }
-  return sum;
+    description: 'Linear — does one unit of work per item.',
+    code: `// O(n) - Linear time
+// We do 1 operation for each item, so N items = N operations.
+
+let operations = 0;
+
+for (let i = 1; i <= N; i++) {
+  operations++; // do one piece of work
 }
 
-console.log("sum up to N:", linearSum(N));`,
+console.log("N =", N);
+console.log("Total operations:", operations);`,
   },
   {
     id: 'onlogn',
     label: 'O(n log n)',
     color: '#a855f7',
     fn: (n) => n * Math.log2(Math.max(n, 1)),
-    description: 'Linearithmic — common in efficient sorting algorithms.',
-    code: `function nLogNWork(n) {
-  let ops = 0;
-  for (let i = 0; i < n; i++) {
-    let size = n;
-    while (size > 1) {
-      size = Math.floor(size / 2);
-      ops++;
-    }
+    description: 'Linearithmic — N items, and each does log(N) work.',
+    code: `// O(n log n) - Linearithmic time
+// For each of the N items, we do log(N) steps.
+// This is common in efficient sorting (like merge sort).
+
+let operations = 0;
+
+for (let i = 0; i < N; i++) {
+  let remaining = N;
+  while (remaining > 1) {
+    remaining = Math.floor(remaining / 2);
+    operations++;
   }
-  return ops;
 }
 
-console.log("approx ops for N:", nLogNWork(N));`,
+console.log("N =", N);
+console.log("Total operations:", operations);`,
   },
   {
     id: 'on2',
     label: 'O(n²)',
     color: '#f59e0b',
     fn: (n) => n * n,
-    description: 'Quadratic — nested loops over the input.',
-    code: `function pairCount(n) {
-  let count = 0;
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      count++;
-    }
+    description: 'Quadratic — a loop inside a loop over N items.',
+    code: `// O(n²) - Quadratic time
+// For every item, we go through every item again.
+// That means N * N operations.
+
+let operations = 0;
+
+for (let i = 0; i < N; i++) {
+  for (let j = 0; j < N; j++) {
+    operations++;
   }
-  return count;
 }
 
-console.log("pairs for N:", pairCount(N));`,
+console.log("N =", N);
+console.log("Total operations:", operations);`,
   },
   {
     id: 'o2n',
     label: 'O(2^n)',
     color: '#ef4444',
     fn: (n) => Math.pow(2, n),
-    description: 'Exponential — doubles with each additional element.',
-    code: `// WARNING: slow for large N
-function fib(n) {
-  if (n <= 1) return n;
-  return fib(n - 1) + fib(n - 2);
+    description: 'Exponential — work doubles with each extra item.',
+    code: `// O(2^n) - Exponential time
+// Each extra item roughly doubles the work.
+// We cap N at 25 here so the browser stays responsive.
+
+function countCalls(n) {
+  if (n <= 1) return 1;
+  // This call splits into two more calls
+  return 1 + countCalls(n - 1) + countCalls(n - 1);
 }
 
-console.log("fib(N):", fib(Math.min(N, 30)));`,
+const safeN = Math.min(N, 25);
+if (safeN !== N) console.log("Capped N to", safeN, "for safety");
+
+console.log("N =", safeN);
+console.log("Total calls:", countCalls(safeN));`,
   },
   {
     id: 'onfact',
@@ -130,14 +151,21 @@ console.log("fib(N):", fib(Math.min(N, 30)));`,
       for (let i = 2; i <= n; i++) r *= i
       return r
     },
-    description: 'Factorial — explodes extremely fast; only tiny inputs.',
-    code: `// WARNING: factorial grows insanely fast
+    description: 'Factorial — grows incredibly fast; only tiny N works.',
+    code: `// O(n!) - Factorial time
+// Work grows like 1 × 2 × 3 × ... × N.
+// It gets huge very fast, so we cap N at 12.
+
 function factorial(n) {
   if (n <= 1) return 1;
   return n * factorial(n - 1);
 }
 
-console.log("factorial(N):", factorial(Math.min(N, 20)));`,
+const safeN = Math.min(N, 12);
+if (safeN !== N) console.log("Capped N to", safeN, "for safety");
+
+console.log("N =", safeN);
+console.log("Factorial:", factorial(safeN));`,
   },
 ]
 
