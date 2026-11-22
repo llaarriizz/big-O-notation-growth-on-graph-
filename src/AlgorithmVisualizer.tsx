@@ -75,6 +75,82 @@ function selectionSortSteps(input: number[]): Step[] {
   return steps
 }
 
+function mergeSortSteps(input: number[]): Step[] {
+  const arr = [...input]
+  const steps: Step[] = [{ array: [...arr], active: [], sorted: [], message: 'Start merge sort. Split the array, sort parts, then merge them back together.' }]
+
+  function merge(left: number, mid: number, right: number) {
+    const leftArr = arr.slice(left, mid + 1)
+    const rightArr = arr.slice(mid + 1, right + 1)
+    let i = 0
+    let j = 0
+    let k = left
+
+    steps.push({
+      array: [...arr],
+      active: Array.from({ length: right - left + 1 }, (_, idx) => left + idx),
+      sorted: [],
+      message: `Merge range ${left}..${right} (left: [${leftArr.join(', ')}], right: [${rightArr.join(', ')}]).`,
+    })
+
+    while (i < leftArr.length && j < rightArr.length) {
+      steps.push({
+        array: [...arr],
+        active: [k],
+        sorted: [],
+        message: `Compare ${leftArr[i]} and ${rightArr[j]}. Place the smaller one at index ${k}.`,
+      })
+      if (leftArr[i] <= rightArr[j]) {
+        arr[k] = leftArr[i]
+        i++
+      } else {
+        arr[k] = rightArr[j]
+        j++
+      }
+      steps.push({ array: [...arr], active: [k], sorted: [], message: `Wrote ${arr[k]} at index ${k}.` })
+      k++
+    }
+
+    while (i < leftArr.length) {
+      arr[k] = leftArr[i]
+      steps.push({ array: [...arr], active: [k], sorted: [], message: `Copy remaining left value ${arr[k]} to index ${k}.` })
+      i++
+      k++
+    }
+    while (j < rightArr.length) {
+      arr[k] = rightArr[j]
+      steps.push({ array: [...arr], active: [k], sorted: [], message: `Copy remaining right value ${arr[k]} to index ${k}.` })
+      j++
+      k++
+    }
+
+    steps.push({
+      array: [...arr],
+      active: [],
+      sorted: Array.from({ length: right - left + 1 }, (_, idx) => left + idx),
+      message: `Range ${left}..${right} is merged and sorted.`,
+    })
+  }
+
+  function mergeSort(left: number, right: number) {
+    if (left >= right) return
+    const mid = Math.floor((left + right) / 2)
+    steps.push({
+      array: [...arr],
+      active: Array.from({ length: right - left + 1 }, (_, idx) => left + idx),
+      sorted: [],
+      message: `Split range ${left}..${right} into ${left}..${mid} and ${mid + 1}..${right}.`,
+    })
+    mergeSort(left, mid)
+    mergeSort(mid + 1, right)
+    merge(left, mid, right)
+  }
+
+  if (arr.length > 0) mergeSort(0, arr.length - 1)
+  steps.push({ array: [...arr], active: [], sorted: arr.map((_, i) => i), message: 'Array is fully sorted.' })
+  return steps
+}
+
 function linearSearchSteps(input: number[], target: number): Step[] {
   const arr = [...input]
   const steps: Step[] = [{ array: [...arr], active: [], sorted: [], message: `Start linear search. Look for ${target} one item at a time.` }]
@@ -160,6 +236,32 @@ console.log(bubbleSort([5, 2, 4, 1, 3]));`,
 
 console.log(selectionSort([5, 2, 4, 1, 3]));`,
     makeSteps: (arr) => selectionSortSteps(arr),
+  },
+  {
+    id: 'merge',
+    name: 'Merge Sort',
+    kind: 'sorting',
+    complexity: 'O(n log n)',
+    description: 'Splits the array into halves, sorts each half, then merges them in order.',
+    code: `function mergeSort(arr) {
+  if (arr.length <= 1) return arr;
+
+  const mid = Math.floor(arr.length / 2);
+  const left = mergeSort(arr.slice(0, mid));  // sort left half
+  const right = mergeSort(arr.slice(mid));    // sort right half
+
+  // Merge two sorted halves
+  const result = [];
+  let i = 0, j = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] <= right[j]) result.push(left[i++]);
+    else result.push(right[j++]);
+  }
+  return result.concat(left.slice(i)).concat(right.slice(j));
+}
+
+console.log(mergeSort([5, 2, 4, 1, 3]));`,
+    makeSteps: (arr) => mergeSortSteps(arr),
   },
   {
     id: 'linear',
