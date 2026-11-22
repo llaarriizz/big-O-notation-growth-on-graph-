@@ -11,6 +11,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import AlgorithmVisualizer from './AlgorithmVisualizer'
+import DataStructuresVisualizer from './DataStructuresVisualizer'
 
 type Complexity = {
   id: string
@@ -172,6 +173,14 @@ console.log("Factorial:", factorial(safeN));`,
 
 const MAX_CHART_Y = 100000
 
+type Tab = 'growth' | 'algorithms' | 'structures'
+
+const TABS: { id: Tab; label: string; hint: string }[] = [
+  { id: 'growth', label: 'Big O Growth', hint: 'Compare complexity curves' },
+  { id: 'algorithms', label: 'Algorithms', hint: 'Watch sorting and searching' },
+  { id: 'structures', label: 'Data Structures', hint: 'Explore storage visually' },
+]
+
 function formatNumber(value: number): string {
   if (!Number.isFinite(value)) return '∞'
   if (Math.abs(value) >= 1_000_000) return value.toExponential(2)
@@ -222,6 +231,7 @@ function runUserCode(code: string, n: number): { logs: string[]; error?: string 
 }
 
 export default function App() {
+  const [tab, setTab] = useState<Tab>('growth')
   const [n, setN] = useState(20)
   const [scale, setScale] = useState<'linear' | 'log'>('log')
   const [visible, setVisible] = useState<Set<string>>(() => new Set(COMPLEXITIES.map((c) => c.id)))
@@ -267,211 +277,235 @@ export default function App() {
             Big O Notation Visualizer
           </h1>
           <p className="mt-2 max-w-3xl text-slate-400">
-            See how different time complexities grow as your input size <span className="font-mono text-sky-400">N</span> increases.
-            Pick complexities, inspect their growth, and run code with your own N.
+            Compare how time complexities grow, watch algorithms step by step, and see how common data structures work.
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 lg:col-span-2">
-            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex-1">
-                <label className="mb-2 block text-sm font-medium text-slate-300">
-                  Input size N: <span className="font-mono text-sky-400">{n}</span>
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={50}
-                  value={n}
-                  onChange={(e) => setN(Number(e.target.value))}
-                  className="w-full accent-sky-500"
-                />
-                <div className="mt-1 flex justify-between text-xs text-slate-500">
-                  <span>1</span>
-                  <span>50</span>
+        <nav className="mb-6 flex flex-wrap gap-2 border-b border-slate-800 pb-3" aria-label="Sections">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              aria-current={tab === item.id ? 'page' : undefined}
+              className={`rounded-md border px-4 py-2 text-left text-sm font-medium transition ${
+                tab === item.id
+                  ? 'border-sky-500 bg-sky-500 text-slate-950'
+                  : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              <span className="block">{item.label}</span>
+              <span className={`block text-xs font-normal ${tab === item.id ? 'text-slate-800' : 'text-slate-500'}`}>
+                {item.hint}
+              </span>
+            </button>
+          ))}
+        </nav>
+
+        {tab === 'growth' && (
+          <>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 lg:col-span-2">
+              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex-1">
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Input size N: <span className="font-mono text-sky-400">{n}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={50}
+                    value={n}
+                    onChange={(e) => setN(Number(e.target.value))}
+                    className="w-full accent-sky-500"
+                  />
+                  <div className="mt-1 flex justify-between text-xs text-slate-500">
+                    <span>1</span>
+                    <span>50</span>
+                  </div>
+                </div>
+                <div className="sm:w-28">
+                  <label className="mb-2 block text-sm font-medium text-slate-300">N value</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={n}
+                    onChange={(e) => {
+                      const v = Number(e.target.value)
+                      if (Number.isFinite(v)) setN(Math.max(1, Math.min(50, Math.floor(v))))
+                    }}
+                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+                  />
                 </div>
               </div>
-              <div className="sm:w-28">
-                <label className="mb-2 block text-sm font-medium text-slate-300">N value</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={n}
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (Number.isFinite(v)) setN(Math.max(1, Math.min(50, Math.floor(v))))
-                  }}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
-                />
-              </div>
-            </div>
 
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {COMPLEXITIES.map((c) => {
-                const active = visible.has(c.id)
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => toggle(c.id)}
-                    className="rounded-full border px-3 py-1 text-sm font-medium transition"
-                    style={{
-                      borderColor: c.color,
-                      color: active ? '#0f172a' : c.color,
-                      backgroundColor: active ? c.color : 'transparent',
-                      opacity: active ? 1 : 0.75,
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                )
-              })}
-              <div className="ml-auto flex rounded-md border border-slate-700 bg-slate-950 p-0.5 text-sm">
-                <button
-                  onClick={() => setScale('linear')}
-                  className={`rounded px-3 py-1 ${scale === 'linear' ? 'bg-sky-500 text-slate-950' : 'text-slate-300 hover:text-white'}`}
-                >
-                  Linear
-                </button>
-                <button
-                  onClick={() => setScale('log')}
-                  className={`rounded px-3 py-1 ${scale === 'log' ? 'bg-sky-500 text-slate-950' : 'text-slate-300 hover:text-white'}`}
-                >
-                  Log
-                </button>
-              </div>
-            </div>
-
-            <div className="h-[360px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="n" stroke="#94a3b8" label={{ value: 'N', position: 'insideBottomRight', offset: -5, fill: '#94a3b8' }} />
-                  <YAxis
-                    stroke="#94a3b8"
-                    scale={scale === 'log' ? 'log' : 'auto'}
-                    domain={scale === 'log' ? [1, MAX_CHART_Y] : [0, MAX_CHART_Y]}
-                    allowDataOverflow
-                    tickFormatter={(v) => formatNumber(v)}
-                    width={72}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
-                    labelStyle={{ color: '#e2e8f0' }}
-                    formatter={(value: number, name: string, item: any) => {
-                      const raw = item?.payload?.[`${name}_raw`]
-                      return [formatNumber(typeof raw === 'number' ? raw : value), COMPLEXITIES.find((c) => c.id === name)?.label ?? name]
-                    }}
-                    labelFormatter={(label) => `N = ${label}`}
-                  />
-                  <Legend formatter={(value) => COMPLEXITIES.find((c) => c.id === value)?.label ?? value} />
-                  <ReferenceLine x={n} stroke="#38bdf8" strokeDasharray="4 4" />
-                  {COMPLEXITIES.filter((c) => visible.has(c.id)).map((c) => (
-                    <Line
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {COMPLEXITIES.map((c) => {
+                  const active = visible.has(c.id)
+                  return (
+                    <button
                       key={c.id}
-                      type="monotone"
-                      dataKey={c.id}
-                      stroke={c.color}
-                      strokeWidth={2.5}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              {scale === 'log'
-                ? 'Log scale makes slow-growing curves visible alongside fast ones. Values are exact in the table below.'
-                : `Linear scale is capped at ${formatNumber(MAX_CHART_Y)} to keep fast-growing curves readable. Switch to Log to compare all curves.`}
-            </p>
-          </section>
-
-          <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-            <h2 className="mb-3 text-lg font-semibold text-white">Values at N = {n}</h2>
-            <div className="space-y-2">
-              {COMPLEXITIES.map((c) => {
-                const value = c.fn(n)
-                const active = visible.has(c.id)
-                return (
+                      onClick={() => toggle(c.id)}
+                      className="rounded-full border px-3 py-1 text-sm font-medium transition"
+                      style={{
+                        borderColor: c.color,
+                        color: active ? '#0f172a' : c.color,
+                        backgroundColor: active ? c.color : 'transparent',
+                        opacity: active ? 1 : 0.75,
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  )
+                })}
+                <div className="ml-auto flex rounded-md border border-slate-700 bg-slate-950 p-0.5 text-sm">
                   <button
-                    key={c.id}
-                    onClick={() => selectComplexity(c.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition ${
-                      selectedId === c.id ? 'border-sky-500 bg-slate-800' : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
-                    }`}
-                    style={{ opacity: active ? 1 : 0.55 }}
+                    onClick={() => setScale('linear')}
+                    className={`rounded px-3 py-1 ${scale === 'linear' ? 'bg-sky-500 text-slate-950' : 'text-slate-300 hover:text-white'}`}
                   >
-                    <div>
-                      <div className="font-mono text-sm font-semibold" style={{ color: c.color }}>{c.label}</div>
-                      <div className="text-xs text-slate-500">{c.description}</div>
-                    </div>
-                    <div className="ml-3 shrink-0 font-mono text-sm text-slate-200">{formatNumber(value)}</div>
+                    Linear
                   </button>
-                )
-              })}
-            </div>
-          </section>
-        </div>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Code example</h2>
-                <p className="text-sm text-slate-400">
-                  <span className="font-mono" style={{ color: selected.color }}>{selected.label}</span> — {selected.description}
-                </p>
+                  <button
+                    onClick={() => setScale('log')}
+                    className={`rounded px-3 py-1 ${scale === 'log' ? 'bg-sky-500 text-slate-950' : 'text-slate-300 hover:text-white'}`}
+                  >
+                    Log
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => { setCode(selected.code); setOutput(null) }}
-                className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
-              >
-                Reset
-              </button>
-            </div>
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              spellCheck={false}
-              className="h-72 w-full rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100 outline-none focus:border-sky-500"
-            />
-            <div className="mt-3 flex items-center gap-3">
-              <button
-                onClick={handleRun}
-                className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-sky-400"
-              >
-                Run with N = {n}
-              </button>
-              <span className="text-xs text-slate-500">
-                Runs in your browser. <span className="font-mono">N</span> and <span className="font-mono">console.log</span> are available.
-              </span>
-            </div>
-          </section>
 
-          <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-            <h2 className="mb-3 text-lg font-semibold text-white">Output</h2>
-            <div className="h-72 overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-sm">
-              {!output && <div className="text-slate-500">Run code to see output here.</div>}
-              {output?.logs.map((line, i) => (
-                <div key={i} className="whitespace-pre-wrap break-words text-slate-200">{line}</div>
-              ))}
-              {output?.error && (
-                <div className="mt-2 whitespace-pre-wrap break-words text-red-400">Error: {output.error}</div>
-              )}
-              {output && output.logs.length === 0 && !output.error && (
-                <div className="text-slate-500">(no output)</div>
-              )}
-            </div>
-            <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-400">
-              <div className="font-semibold text-slate-300">Tip</div>
-              Use <span className="font-mono text-slate-200">N</span> in your code for the current input size. For expensive examples like recursion, keep N small.
-            </div>
-          </section>
-        </div>
+              <div className="h-[360px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="n" stroke="#94a3b8" label={{ value: 'N', position: 'insideBottomRight', offset: -5, fill: '#94a3b8' }} />
+                    <YAxis
+                      stroke="#94a3b8"
+                      scale={scale === 'log' ? 'log' : 'auto'}
+                      domain={scale === 'log' ? [1, MAX_CHART_Y] : [0, MAX_CHART_Y]}
+                      allowDataOverflow
+                      tickFormatter={(v) => formatNumber(v)}
+                      width={72}
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
+                      labelStyle={{ color: '#e2e8f0' }}
+                      formatter={(value: number, name: string, item: any) => {
+                        const raw = item?.payload?.[`${name}_raw`]
+                        return [formatNumber(typeof raw === 'number' ? raw : value), COMPLEXITIES.find((c) => c.id === name)?.label ?? name]
+                      }}
+                      labelFormatter={(label) => `N = ${label}`}
+                    />
+                    <Legend formatter={(value) => COMPLEXITIES.find((c) => c.id === value)?.label ?? value} />
+                    <ReferenceLine x={n} stroke="#38bdf8" strokeDasharray="4 4" />
+                    {COMPLEXITIES.filter((c) => visible.has(c.id)).map((c) => (
+                      <Line
+                        key={c.id}
+                        type="monotone"
+                        dataKey={c.id}
+                        stroke={c.color}
+                        strokeWidth={2.5}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                {scale === 'log'
+                  ? 'Log scale makes slow-growing curves visible alongside fast ones. Values are exact in the table below.'
+                  : `Linear scale is capped at ${formatNumber(MAX_CHART_Y)} to keep fast-growing curves readable. Switch to Log to compare all curves.`}
+              </p>
+            </section>
 
-        <AlgorithmVisualizer />
+            <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+              <h2 className="mb-3 text-lg font-semibold text-white">Values at N = {n}</h2>
+              <div className="space-y-2">
+                {COMPLEXITIES.map((c) => {
+                  const value = c.fn(n)
+                  const active = visible.has(c.id)
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => selectComplexity(c.id)}
+                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition ${
+                        selectedId === c.id ? 'border-sky-500 bg-slate-800' : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+                      }`}
+                      style={{ opacity: active ? 1 : 0.55 }}
+                    >
+                      <div>
+                        <div className="font-mono text-sm font-semibold" style={{ color: c.color }}>{c.label}</div>
+                        <div className="text-xs text-slate-500">{c.description}</div>
+                      </div>
+                      <div className="ml-3 shrink-0 font-mono text-sm text-slate-200">{formatNumber(value)}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Code example</h2>
+                  <p className="text-sm text-slate-400">
+                    <span className="font-mono" style={{ color: selected.color }}>{selected.label}</span> — {selected.description}
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setCode(selected.code); setOutput(null) }}
+                  className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
+                >
+                  Reset
+                </button>
+              </div>
+              <textarea
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                spellCheck={false}
+                className="h-72 w-full rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100 outline-none focus:border-sky-500"
+              />
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  onClick={handleRun}
+                  className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-sky-400"
+                >
+                  Run with N = {n}
+                </button>
+                <span className="text-xs text-slate-500">
+                  Runs in your browser. <span className="font-mono">N</span> and <span className="font-mono">console.log</span> are available.
+                </span>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+              <h2 className="mb-3 text-lg font-semibold text-white">Output</h2>
+              <div className="h-72 overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-sm">
+                {!output && <div className="text-slate-500">Run code to see output here.</div>}
+                {output?.logs.map((line, i) => (
+                  <div key={i} className="whitespace-pre-wrap break-words text-slate-200">{line}</div>
+                ))}
+                {output?.error && (
+                  <div className="mt-2 whitespace-pre-wrap break-words text-red-400">Error: {output.error}</div>
+                )}
+                {output && output.logs.length === 0 && !output.error && (
+                  <div className="text-slate-500">(no output)</div>
+                )}
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-xs text-slate-400">
+                <div className="font-semibold text-slate-300">Tip</div>
+                Use <span className="font-mono text-slate-200">N</span> in your code for the current input size. For expensive examples like recursion, keep N small.
+              </div>
+            </section>
+          </div>
+          </>
+        )}
+
+        {tab === 'algorithms' && <AlgorithmVisualizer />}
+        {tab === 'structures' && <DataStructuresVisualizer />}
       </div>
     </div>
   )

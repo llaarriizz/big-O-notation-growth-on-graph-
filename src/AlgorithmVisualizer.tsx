@@ -371,7 +371,7 @@ export default function AlgorithmVisualizer() {
   const maxValue = Math.max(...step.array, 1)
 
   return (
-    <section className="mt-6 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+    <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Algorithm Visualizer</h2>
