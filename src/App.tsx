@@ -10,6 +10,7 @@ import {
   YAxis,
   ReferenceLine,
 } from 'recharts'
+import AlgorithmVisualizer from './AlgorithmVisualizer'
 
 type Complexity = {
   id: string
@@ -469,6 +470,8 @@ export default function App() {
             </div>
           </section>
         </div>
+
+        <AlgorithmVisualizer />
       </div>
     </div>
   )
