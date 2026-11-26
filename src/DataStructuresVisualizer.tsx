@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-type StructureId = 'array' | 'linked' | 'stack' | 'queue' | 'hash' | 'tree' | 'graph'
+type StructureId = 'array' | 'linked' | 'stack' | 'queue' | 'hash' | 'tree' | 'heap' | 'graph'
 
 type StructureMeta = {
   id: StructureId
@@ -68,6 +68,16 @@ const STRUCTURES: StructureMeta[] = [
       { op: 'Search (balanced)', cost: 'O(log n)' },
       { op: 'Insert (balanced)', cost: 'O(log n)' },
       { op: 'Worst case', cost: 'O(n)' },
+    ],
+  },
+  {
+    id: 'heap',
+    name: 'Heap',
+    tagline: 'A complete binary tree stored in an array. This min-heap keeps every parent ≤ its children.',
+    operations: [
+      { op: 'Peek min', cost: 'O(1)' },
+      { op: 'Insert', cost: 'O(log n)' },
+      { op: 'Extract min', cost: 'O(log n)' },
     ],
   },
   {
@@ -611,6 +621,321 @@ function TreeView() {
   )
 }
 
+type HeapFrame = { values: number[]; active: number[]; note: string }
+const INITIAL_HEAP = [10, 20, 15, 40, 50, 30, 25]
+
+function insertHeapFrames(heap: number[], value: number): HeapFrame[] {
+  const values = [...heap, value]
+  const frames: HeapFrame[] = []
+  let index = values.length - 1
+
+  frames.push({
+    values: [...values],
+    active: [index],
+    note: `Placed ${value} at index ${index}, the next open slot in the complete tree.`,
+  })
+
+  while (index > 0) {
+    const parent = Math.floor((index - 1) / 2)
+    const childValue = values[index]
+    const parentValue = values[parent]
+
+    frames.push({
+      values: [...values],
+      active: [index, parent],
+      note: `Compare ${childValue} with its parent ${parentValue} at index ${parent}.`,
+    })
+
+    if (childValue >= parentValue) {
+      frames.push({
+        values: [...values],
+        active: [index],
+        note: `${childValue} ≥ ${parentValue}, so the min-heap property already holds.`,
+      })
+      return frames
+    }
+
+    ;[values[index], values[parent]] = [values[parent], values[index]]
+    frames.push({
+      values: [...values],
+      active: [index, parent],
+      note: `${childValue} < ${parentValue}, so swap them and keep sifting up.`,
+    })
+    index = parent
+  }
+
+  frames.push({
+    values: [...values],
+    active: [index],
+    note: `Reached the root. ${values[index]} is now the minimum.`,
+  })
+  return frames
+}
+
+function extractMinFrames(heap: number[]): HeapFrame[] {
+  if (heap.length === 0) {
+    return [{ values: [], active: [], note: 'The heap is empty — nothing to extract.' }]
+  }
+
+  const values = [...heap]
+  const min = values[0]
+
+  if (values.length === 1) {
+    return [{ values: [], active: [], note: `Extracted ${min}. The heap is now empty.` }]
+  }
+
+  const last = values.pop()!
+  values[0] = last
+
+  const frames: HeapFrame[] = [
+    {
+      values: [...values],
+      active: [0],
+      note: `Extracted min ${min}; moved the last item ${last} to the root.`,
+    },
+  ]
+  let index = 0
+
+  while (true) {
+    const left = index * 2 + 1
+    const right = left + 1
+
+    if (left >= values.length) {
+      frames.push({
+        values: [...values],
+        active: [index],
+        note: `Index ${index} has no children, so sifting down is done.`,
+      })
+      break
+    }
+
+    const smaller = right < values.length && values[right] < values[left] ? right : left
+    const active = right < values.length ? [index, left, right] : [index, left]
+
+    frames.push({
+      values: [...values],
+      active,
+      note: `Compare ${values[index]} with its smaller child ${values[smaller]} at index ${smaller}.`,
+    })
+
+    if (values[index] <= values[smaller]) {
+      frames.push({
+        values: [...values],
+        active: [index],
+        note: `${values[index]} ≤ ${values[smaller]}, so the heap property holds.`,
+      })
+      break
+    }
+
+    const parentValue = values[index]
+    const childValue = values[smaller]
+    ;[values[index], values[smaller]] = [values[smaller], values[index]]
+    frames.push({
+      values: [...values],
+      active: [index, smaller],
+      note: `${parentValue} > ${childValue}, so swap them and keep sifting down.`,
+    })
+    index = smaller
+  }
+
+  return frames
+}
+
+function layoutHeap(values: number[]) {
+  const nodes = values.map((value, index) => {
+    const level = Math.floor(Math.log2(index + 1))
+    const firstInLevel = 2 ** level - 1
+    const position = index - firstInLevel
+    const slots = 2 ** level
+    return {
+      value,
+      index,
+      x: 40 + ((position + 0.5) * 520) / slots,
+      y: 32 + level * 58,
+    }
+  })
+
+  const edges = nodes
+    .filter((node) => node.index > 0)
+    .map((node) => {
+      const parent = nodes[Math.floor((node.index - 1) / 2)]
+      return { x1: parent.x, y1: parent.y, x2: node.x, y2: node.y }
+    })
+
+  return {
+    nodes,
+    edges,
+    height: Math.max(180, ...nodes.map((node) => node.y + 40)),
+  }
+}
+
+function HeapView() {
+  const [frames, setFrames] = useState<HeapFrame[]>(() => [
+    {
+      values: [...INITIAL_HEAP],
+      active: [],
+      note: 'The smallest value sits at index 0. Insert, then watch the item sift up or down.',
+    },
+  ])
+  const [frame, setFrame] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [value, setValue] = useState(35)
+  const current = frames[frame] ?? frames[0]
+  const layout = useMemo(() => layoutHeap(current.values), [current.values])
+
+  useEffect(() => {
+    if (!playing) return
+    if (frame >= frames.length - 1) {
+      setPlaying(false)
+      return
+    }
+    const id = window.setInterval(() => {
+      setFrame((previous) => {
+        if (previous >= frames.length - 1) {
+          window.clearInterval(id)
+          return previous
+        }
+        return previous + 1
+      })
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [playing, frame, frames.length])
+
+  const showFrames = (next: HeapFrame[]) => {
+    setFrames(next)
+    setFrame(0)
+    setPlaying(true)
+  }
+
+  const insert = () => showFrames(insertHeapFrames(current.values, value))
+
+  const extractMin = () => showFrames(extractMinFrames(current.values))
+
+  const peek = () => {
+    setPlaying(false)
+    if (current.values.length === 0) {
+      setFrames([{ values: [], active: [], note: 'The heap is empty — there is no minimum to peek.' }])
+    } else {
+      setFrames([{
+        values: current.values,
+        active: [0],
+        note: `Root ${current.values[0]} is the minimum. Reading index 0 takes O(1).`,
+      }])
+    }
+    setFrame(0)
+  }
+
+  const reset = () => {
+    setPlaying(false)
+    setFrames([{
+      values: [...INITIAL_HEAP],
+      active: [],
+      note: 'Heap reset to its starting min-heap.',
+    }])
+    setFrame(0)
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg border border-slate-800 bg-slate-950 p-4">
+        <div className="mb-2 text-xs text-slate-500">array layout · parent(i) = ⌊(i − 1) / 2⌋</div>
+        <div className="overflow-x-auto">
+          <div className="flex min-w-[520px] gap-1">
+            {current.values.map((item, i) => (
+              <div
+                key={i}
+                className={`flex h-16 flex-1 flex-col items-center justify-center rounded-md border transition ${
+                  current.active.includes(i) ? 'border-sky-400 bg-sky-500/20' : 'border-slate-700 bg-slate-800/60'
+                }`}
+              >
+                <span className="text-[10px] text-slate-500">{i}</span>
+                <span className="font-mono text-lg font-semibold text-slate-100">{item}</span>
+              </div>
+            ))}
+            {current.values.length === 0 && (
+              <div className="w-full rounded-md border border-dashed border-slate-700 py-5 text-center text-sm text-slate-500">empty heap</div>
+            )}
+          </div>
+        </div>
+        <div className="mt-4 border-t border-slate-800 pt-3 text-xs text-slate-500">tree layout · children(i) = 2i + 1, 2i + 2</div>
+        <div className="overflow-x-auto">
+          <svg viewBox={`0 0 600 ${layout.height}`} className="h-64 w-full min-w-[520px]" role="img" aria-label="Min-heap as a complete binary tree">
+            {layout.edges.map((edge, i) => (
+              <line key={i} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="#475569" strokeWidth={2} />
+            ))}
+            {layout.nodes.map((node) => {
+              const active = current.active.includes(node.index)
+              return (
+                <g key={node.index}>
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={20}
+                    fill={active ? '#38bdf8' : '#1e293b'}
+                    stroke={active ? '#7dd3fc' : '#64748b'}
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={node.x}
+                    y={node.y + 5}
+                    textAnchor="middle"
+                    fill={active ? '#0f172a' : '#e2e8f0'}
+                    className="font-mono text-sm font-semibold"
+                  >
+                    {node.value}
+                  </text>
+                  <text x={node.x} y={node.y + 33} textAnchor="middle" className="fill-slate-500 font-mono text-[10px]">
+                    {node.index}
+                  </text>
+                </g>
+              )
+            })}
+            {layout.nodes.length === 0 && <text x={20} y={40} className="fill-slate-500">Empty heap</text>}
+          </svg>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm text-slate-300">
+          <span className="mb-1 block">Insert value</span>
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => setValue(Number(e.target.value))}
+            className="w-28 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+          />
+        </label>
+        <button onClick={insert} className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-sky-400">Insert</button>
+        <button onClick={extractMin} className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Extract min</button>
+        <button onClick={peek} className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Peek min</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => { setPlaying(false); setFrame((i) => Math.max(0, i - 1)) }}
+          className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+        >
+          Back
+        </button>
+        <button
+          onClick={() => { setPlaying(false); setFrame((i) => Math.min(frames.length - 1, i + 1)) }}
+          className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+        >
+          Forward
+        </button>
+        <button
+          onClick={() => setPlaying((previous) => !previous)}
+          disabled={frames.length < 2 || (frame === frames.length - 1 && !playing)}
+          className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {playing ? 'Pause' : 'Play'}
+        </button>
+        <span className="text-xs text-slate-500">Step {frame + 1} / {frames.length}</span>
+        <button onClick={reset} className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Reset</button>
+      </div>
+      <p className="rounded-md bg-slate-950/60 px-4 py-3 text-sm text-slate-300">{current.note}</p>
+    </div>
+  )
+}
+
 const GRAPH_NODES = [
   { id: 'A', x: 80, y: 60 },
   { id: 'B', x: 210, y: 40 },
@@ -819,6 +1144,7 @@ export default function DataStructuresVisualizer() {
           {selectedId === 'queue' && <QueueView />}
           {selectedId === 'hash' && <HashTableView />}
           {selectedId === 'tree' && <TreeView />}
+          {selectedId === 'heap' && <HeapView />}
           {selectedId === 'graph' && <GraphView />}
         </div>
         <div>
